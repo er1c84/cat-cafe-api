@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  email        String        @unique
+  password     String
+  role         Role          @default(USER)
+  reservations Reservation[]
+
+  @@map("users")
+}
+
+model Cat {
+  id     Int     @id @default(autoincrement())
+  name   String
+  age    Int
+  breed  String
+  status String  @default("available")
+  visits Visit[]
+
+  @@map("cats")
+}
+
+model Reservation {
+  id           Int     @id @default(autoincrement())
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       Int     @map("user_id")
+  date         String
+  time         String
+  numberGuests Int     @map("number_guests")
+  status       String  @default("confirmed")
+  visits       Visit[]
+
+  @@map("reservations")
+}
+
+model Visit {
+  id            Int         @id @default(autoincrement())
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  reservationId Int         @map("reservation_id")
+  cat           Cat         @relation(fields: [catId], references: [id], onDelete: Cascade)
+  catId         Int         @map("cat_id")
+
+  @@unique([reservationId, catId])
+  @@map("visits")
+}
+
+enum Role {
+  USER
+  ADMIN
+}

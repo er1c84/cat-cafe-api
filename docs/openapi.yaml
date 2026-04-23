@@ -1,0 +1,761 @@
+openapi: 3.0.3
+info:
+  title: Cat Cafe Reservation API
+  version: 1.0.0
+  description: REST API for user authentication, cat management, reservations, and admin visit assignments.
+servers:
+  - url: http://localhost:3000/api
+    description: Local development
+tags:
+  - name: Auth
+  - name: Cats
+  - name: Reservations
+  - name: Visits
+paths:
+  /auth/signup:
+    post:
+      tags: [Auth]
+      summary: Create a new user account
+      description: Registers a user and returns the created user without the password.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignUpRequest'
+            example:
+              email: newuser@test.com
+              password: Pass1234
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/DuplicateEmail'
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in and receive a JWT
+      description: Authenticates a user and returns a bearer token for protected endpoints.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              admin:
+                summary: Admin login
+                value:
+                  email: admin@catcafe.com
+                  password: Pass1234
+              user:
+                summary: User login
+                value:
+                  email: alice@test.com
+                  password: Pass1234
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/InvalidCredentials'
+  /cats:
+    get:
+      tags: [Cats]
+      summary: Get all cats
+      description: Returns cats available in the cafe. This endpoint is public.
+      parameters:
+        - $ref: '#/components/parameters/StatusQuery'
+        - $ref: '#/components/parameters/SortByQuery'
+        - $ref: '#/components/parameters/OrderQuery'
+        - $ref: '#/components/parameters/OffsetQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200':
+          description: List of cats
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Cat'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags: [Cats]
+      summary: Create a cat
+      description: Admin-only endpoint for adding a cat to the cafe.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CatRequest'
+            example:
+              name: Maple
+              age: 2
+              breed: Calico
+              status: available
+      responses:
+        '201':
+          description: Cat created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cat'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/NotAuthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /cats/{id}:
+    get:
+      tags: [Cats]
+      summary: Get a cat by ID
+      description: Returns one cat by ID. This endpoint is public.
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Cat found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatWithVisits'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Cats]
+      summary: Update a cat
+      description: Admin-only endpoint for changing cat details.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CatUpdateRequest'
+            example:
+              status: resting
+      responses:
+        '200':
+          description: Cat updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cat'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/NotAuthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Cats]
+      summary: Delete a cat
+      description: Admin-only endpoint for deleting a cat.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '204':
+          description: No Content. Cat deleted successfully.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/NotAuthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /reservations:
+    get:
+      tags: [Reservations]
+      summary: Get reservations
+      description: Admins receive all reservations. Users receive only their own reservations.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/StatusQuery'
+        - $ref: '#/components/parameters/SortByQuery'
+        - $ref: '#/components/parameters/OrderQuery'
+        - $ref: '#/components/parameters/OffsetQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200':
+          description: List of reservations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reservation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/NotAuthenticated'
+    post:
+      tags: [Reservations]
+      summary: Create a reservation
+      description: Authenticated users create reservations for their own account.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationRequest'
+            example:
+              date: '2026-04-27'
+              time: '14:00'
+              numberGuests: 2
+      responses:
+        '201':
+          description: Reservation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/NotAuthenticated'
+  /reservations/{id}:
+    get:
+      tags: [Reservations]
+      summary: Get a reservation by ID
+      description: Owners can access their own reservation. Admins can access any reservation.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Reservation found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/NotAuthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Reservations]
+      summary: Update a reservation
+      description: Owners can update their own reservation. Admins can update any reservation.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationUpdateRequest'
+            example:
+              status: cancelled
+      responses:
+        '200':
+          description: Reservation updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/NotAuthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Reservations]
+      summary: Delete a reservation
+      description: Owners can delete their own reservation. Admins can delete any reservation.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '204':
+          description: No Content. Reservation deleted successfully.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/NotAuthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /visits:
+    get:
+      tags: [Visits]
+      summary: Get all visit records
+      description: Admin-only endpoint for viewing reservation-cat assignments.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SortByQuery'
+        - $ref: '#/components/parameters/OrderQuery'
+        - $ref: '#/components/parameters/OffsetQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200':
+          description: List of visits
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Visit'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/NotAuthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Visits]
+      summary: Assign a cat to a reservation
+      description: Admin-only endpoint for creating a visit assignment.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VisitRequest'
+            example:
+              reservationId: 3
+              catId: 4
+      responses:
+        '201':
+          description: Visit created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Visit'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/NotAuthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /visits/{id}:
+    get:
+      tags: [Visits]
+      summary: Get a visit by ID
+      description: Admin-only endpoint for retrieving one visit assignment.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Visit found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Visit'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/NotAuthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Visits]
+      summary: Update a visit
+      description: Admin-only endpoint for changing a visit assignment.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VisitUpdateRequest'
+            example:
+              catId: 1
+      responses:
+        '200':
+          description: Visit updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Visit'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/NotAuthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Visits]
+      summary: Delete a visit
+      description: Admin-only endpoint for deleting a visit assignment.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '204':
+          description: No Content. Visit deleted successfully.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/NotAuthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    ResourceId:
+      name: id
+      in: path
+      required: true
+      description: Resource ID
+      schema:
+        type: integer
+        example: 1
+    StatusQuery:
+      name: status
+      in: query
+      required: false
+      schema:
+        type: string
+        example: available
+    SortByQuery:
+      name: sortBy
+      in: query
+      required: false
+      schema:
+        type: string
+        example: id
+    OrderQuery:
+      name: order
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [asc, desc]
+        example: asc
+    OffsetQuery:
+      name: offset
+      in: query
+      required: false
+      schema:
+        type: integer
+        example: 0
+    LimitQuery:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        example: 10
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 2
+        email:
+          type: string
+          example: alice@test.com
+        role:
+          type: string
+          example: USER
+    SignUpRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          example: newuser@test.com
+        password:
+          type: string
+          example: Pass1234
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          example: alice@test.com
+        password:
+          type: string
+          example: Pass1234
+    Cat:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Milo
+        age:
+          type: integer
+          example: 2
+        breed:
+          type: string
+          example: Tabby
+        status:
+          type: string
+          example: available
+    CatWithVisits:
+      allOf:
+        - $ref: '#/components/schemas/Cat'
+        - type: object
+          properties:
+            visits:
+              type: array
+              items:
+                type: object
+    CatRequest:
+      type: object
+      required: [name, age, breed]
+      properties:
+        name:
+          type: string
+        age:
+          type: integer
+        breed:
+          type: string
+        status:
+          type: string
+          enum: [available, resting, adopted]
+    CatUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        age:
+          type: integer
+        breed:
+          type: string
+        status:
+          type: string
+          enum: [available, resting, adopted]
+    Reservation:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        userId:
+          type: integer
+          example: 2
+        date:
+          type: string
+          example: '2026-04-24'
+        time:
+          type: string
+          example: '13:00'
+        numberGuests:
+          type: integer
+          example: 3
+        status:
+          type: string
+          example: confirmed
+        user:
+          $ref: '#/components/schemas/User'
+        visits:
+          type: array
+          items:
+            $ref: '#/components/schemas/Visit'
+    ReservationRequest:
+      type: object
+      required: [date, time, numberGuests]
+      properties:
+        date:
+          type: string
+          example: '2026-04-27'
+        time:
+          type: string
+          example: '14:00'
+        numberGuests:
+          type: integer
+          example: 2
+        status:
+          type: string
+          enum: [confirmed, cancelled, completed]
+    ReservationUpdateRequest:
+      type: object
+      properties:
+        date:
+          type: string
+        time:
+          type: string
+        numberGuests:
+          type: integer
+        status:
+          type: string
+          enum: [confirmed, cancelled, completed]
+    Visit:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        reservationId:
+          type: integer
+          example: 1
+        catId:
+          type: integer
+          example: 1
+        reservation:
+          type: object
+        cat:
+          $ref: '#/components/schemas/Cat'
+    VisitRequest:
+      type: object
+      required: [reservationId, catId]
+      properties:
+        reservationId:
+          type: integer
+          example: 3
+        catId:
+          type: integer
+          example: 4
+    VisitUpdateRequest:
+      type: object
+      properties:
+        reservationId:
+          type: integer
+        catId:
+          type: integer
+  responses:
+    BadRequest:
+      description: Bad request due to invalid input
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              errors:
+                type: array
+                items:
+                  type: string
+          example:
+            errors: ['Id must be a positive integer']
+    NotAuthenticated:
+      description: Missing or invalid bearer token
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+          example:
+            error: Not authenticated. Please provide a valid token.
+    Forbidden:
+      description: Authenticated user does not have permission
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+          example:
+            error: 'Forbidden: insufficient permission'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+          example:
+            error: Resource not found
+    DuplicateEmail:
+      description: Email already exists
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+          example:
+            error: Email has already been used
+    InvalidCredentials:
+      description: Invalid login credentials
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+          example:
+            error: Invalid email or password
+    Conflict:
+      description: Duplicate assignment or conflicting data
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+          example:
+            error: This cat is already assigned to this reservation
