@@ -4,8 +4,8 @@ info:
   version: 1.0.0
   description: REST API for user authentication, cat management, reservations, and admin visit assignments.
 servers:
-  - url: http://localhost:3000/api
-    description: Local development
+  - url: /api
+    description: Current API server
 tags:
   - name: Auth
   - name: Cats
