@@ -42,7 +42,7 @@ PORT=3000
 6. Start the server: `npm run dev`
 7. Open Swagger UI: `http://localhost:3000/api-docs`
 
-For Render deployment, use `npm install` as the build command and `npm start` as the start command. The start command pushes the Prisma schema, seeds the database, and then starts the API so the deployed Swagger UI has test data available.
+For Render deployment, use `npm install` as the build command and `npm start` as the start command. The start command pushes the Prisma schema, accepts schema reset warnings for the project database, seeds the database, and then starts the API so the deployed Swagger UI has test data available.
 
 ## Seeded Data
 
