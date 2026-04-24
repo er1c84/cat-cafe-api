@@ -9,14 +9,6 @@ This API manages reservations for a cat cafe. Users can sign up, log in, view ca
 - `reservations`: user booking records.
 - `visits`: assignments between reservations and cats.
 
-## ER Diagram Notes
-
-The API uses these relationships with cardinality on both sides:
-
-- `User` 1 to 0..many `Reservation`: one user can have many reservations; each reservation belongs to exactly one user.
-- `Reservation` 1 to 0..many `Visit`: one reservation can include many cat visit assignments; each visit belongs to exactly one reservation.
-- `Cat` 1 to 0..many `Visit`: one cat can appear in many visit records over time; each visit references exactly one cat.
-
 Essential fields:
 
 - `users`: `id` primary key, `email` unique, `password`, `role`.
@@ -99,9 +91,3 @@ Visits:
 - `POST /api/visits`: admin token, body `{ "reservationId": 3, "catId": 4 }`; expect `201` and visit ID `4`.
 - `PUT /api/visits/3`: admin token, body `{ "catId": 1 }`; expect `200`.
 - `DELETE /api/visits/4`: admin token; expect `204 No Content`.
-
-## Phase 1 Rubric Fixes Applied
-
-- DELETE documentation now uses `204 No Content` for `cats`, `reservations`, and `visits`.
-- `GET /api/visits/:id` now documents `401 Not Authenticated` and `403 Not Authorized`.
-- ER relationship notes include cardinality for both sides of every relationship.
